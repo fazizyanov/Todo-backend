@@ -1,15 +1,23 @@
-const tasks = [];
+const { v4: uuidv4 } = require('uuid');
+const Task = require('../../models/tasks');
+
 
 module.exports.getAllTasks = async (req, res, next) => {
-  res.send({data: tasks});
+  Task.find({}).then(result => {
+    res.send({data: result})
+  });
 };
 
 module.exports.createNewTask = (req, res, next) => {
   const body = req.body;
   if (body.hasOwnProperty('text') && body.hasOwnProperty('isCheck')) {
-    body.id = tasks.length + 1;
-    tasks.push(body);
-    res.send({data: tasks});
+    body.id = uuidv4();
+    const task = new Task(body);
+    task.save().then(result => {
+      Task.find({}).then(_result => {
+        res.send({data: _result});
+      })
+    })
   } else {
     res.status(422).send('Error! Params not correct');
   }
@@ -17,32 +25,28 @@ module.exports.createNewTask = (req, res, next) => {
 
 module.exports.changeTaskInfo = (req, res, next) => {
   const body = req.body;
-  if (body.hasOwnProperty('id') && (body.hasOwnProperty('text') || body.hasOwnProperty('isCheck'))) {
-    tasks.forEach((item, i) => {
-      if(item.id === body.id) {
-        for(let key in body) {
-          tasks[i][key] = body[key];
-        }
-      }
-    });
-    res.send({data: tasks});
+  if (body.hasOwnProperty('_id') && (body.hasOwnProperty('text') || body.hasOwnProperty('isCheck'))) {
+    Task.updateOne({_id: req.body._id}, {text: req.body.text, isCheck: req.body.isCheck}).then(result => {
+      Task.find({}).then(result => {
+        res.send({data: result});
+      })
+    })
   } else {
     res.status(422).send('Error! Params not correct');
   }
 };
 
 module.exports.deleteTask = (req, res, next) => {
-  if (!req.query.id) return res.status(422).send('Error! Params not correct');
-  const task = tasks.filter(item => item.id === +req.query.id);
-  if (task.length) {
-    tasks.forEach((item, i) => {
-      if(item.id === +req.query.id) {
-        tasks.splice(i, 1);
-      }
-    });
-    res.send({data: tasks});
-  } else {
-    res.status(404).send('Task not found');
-  }
+  Task.deleteOne({_id: req.query._id}).then(result => {
+    Task.find({}).then(result => {
+      res.send({data: result});
+    })
+  })
 };
-123
+
+module.exports.deleteAllTask = (req, res, next) => {
+  Task.remove({}).then(result => {
+    res.send({data: result});
+  })
+};
+
